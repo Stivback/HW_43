@@ -1,0 +1,133 @@
+package core;
+
+import org.openqa.selenium.*;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
+import java.math.*;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.*;
+import java.util.regex.*;
+
+public class Chrome {
+
+	public static void main(String[] args) throws InterruptedException {
+		Logger.getLogger("").setLevel(Level.OFF);
+
+		
+		String driverPath = "";
+		if (System.getProperty("os.name").toUpperCase().contains("MAC")) driverPath = "./resources/webdrivers/mac/chromedriver";
+		else if (System.getProperty("os.name").toUpperCase().contains("WINDOWS")) driverPath = "./resources/webdrivers/pc/chromedriver.exe";
+		else throw new IllegalArgumentException("Unknown OS");
+
+		
+		System.setProperty("webdriver.chrome.driver", driverPath);
+		System.setProperty("webdriver.chrome.silentOutput", "true");
+		ChromeOptions option = new ChromeOptions();
+		option.addArguments("disable-infobars");
+		option.addArguments("--disable-notifications");
+		if (System.getProperty("os.name").toUpperCase().contains("MAC")) option.addArguments("-start-fullscreen");
+		else if (System.getProperty("os.name").toUpperCase().contains("WINDOWS")) option.addArguments("--start-maximized");
+		else throw new IllegalArgumentException("Unknown OS");
+		
+		
+		WebDriver driver = new ChromeDriver(option);
+		driver.manage().timeouts().implicitlyWait(15, TimeUnit.SECONDS);
+		
+		
+		
+		
+		String[] urls = { 
+				"http://alex.academy/exe/payment_tax/index.html",
+				"http://alex.academy/exe/payment_tax/index2.html", 
+				"http://alex.academy/exe/payment_tax/index3.html",
+				"http://alex.academy/exe/payment_tax/index4.html", 
+				"http://alex.academy/exe/payment_tax/index5.html",
+				"http://alex.academy/exe/payment_tax/indexE.html" };
+		
+		
+		//String url_1 = "http://alex.academy/exe/payment_tax/index.html";
+		//String url_2 = "http://alex.academy/exe/payment_tax/index2.html";
+		//String url_3 = "http://alex.academy/exe/payment_tax/index3.html";
+		//String url_4 = "http://alex.academy/exe/payment_tax/index4.html";
+		//String url_5 = "http://alex.academy/exe/payment_tax/index5.html";
+		//String url_6 = "http://alex.academy/exe/payment_tax/indexE.html";
+		
+		
+		
+		
+		
+		
+		for (String allUrls : urls) {
+		driver.get(allUrls);
+		
+		
+
+		// Field "Monthly Payment with Tax" 
+		String string_monthly_payment_and_tax = driver.findElement(By.id("id_monthly_payment_and_tax")).getText();
+
+		String regex = "^"   
+				    + "(?:.*?)?"		// looks like title or first string
+				    + "(?:\\$*)?"
+				    + "(?:\\s*)?"	// Everything exclude main title
+				    + "((?:\\d*)|(?:\\d*)(?:\\.)(?:\\d*))"	// Find only one symbol "\"
+				    + "(?:\\s*)?"	// Everything exclude main title
+				    + "(?:[/]*|,\\s*[A-Z]*[a-z]*\\s*[:]*)?"
+				    + "(?:\\s*)?"	// Everything exclude main title
+				    + "((?:\\d*)|(?:\\d*)(?:\\.)(?:\\d*))"
+				    + "(?:\\s*)?"	// Everything exclude main title
+				    + "(?:%)?"		// Everything exclude main title
+				    + "(?:\\s*)?"	// Everything exclude main title
+			     + "$";
+
+		Pattern p = Pattern.compile(regex);
+		Matcher m = p.matcher(string_monthly_payment_and_tax); 
+		m.find();
+
+		double monthly_payment = Double.parseDouble(m.group(1));
+		double tax = Double.parseDouble(m.group(2));
+		
+		
+		
+		// Current URL:
+		// System.out.println("url_6 " + url_6);
+		// Should be: 91.21 or 91.23
+		// String mpwt = driver.findElement(By.id("id_monthly_payment_and_tax")).getText();
+		// System.out.println("mpwt: Should be: 91.23 in fact: " + mpwt);
+		
+		
+		
+		// (91.21 * 8.25) / 100 = 7.524825    rounded => 7.52
+		double monthly_and_tax_amount = new BigDecimal((monthly_payment * tax) / 100).setScale(2, RoundingMode.HALF_UP).doubleValue();
+		// System.out.println("monthly_and_tax_amount " + monthly_and_tax_amount);
+		
+		// 91.21 + 7.52 = 98.72999999999999   rounded => 98.73 or 99.48
+		double monthly_payment_with_tax = new BigDecimal(monthly_payment + monthly_and_tax_amount).setScale(2, RoundingMode.HALF_UP).doubleValue();
+		// System.out.println("monthly_payment_with_tax " + monthly_payment_with_tax);
+		
+		// double annual_payment_with_tax = monthly_payment_with_tax * 12 (should be 1184,76)
+		double annual_payment_with_tax = new BigDecimal(monthly_payment_with_tax * 12).setScale(2, RoundingMode.HALF_UP).doubleValue();
+		// System.out.println("annual_payment_with_tax " + annual_payment_with_tax);
+		
+
+		
+
+		
+		driver.findElement(By.id("id_annual_payment_with_tax")).sendKeys(String.valueOf(annual_payment_with_tax));
+		driver.findElement(By.id("id_validate_button")).submit();
+
+		String actual_result = driver.findElement(By.id("id_result")).getText();
+		System.out.println("------------------------------------------------");
+		System.out.println("Browser: Chrome");
+		System.out.println("URL: " + allUrls);
+		System.out.println("String: \t" + string_monthly_payment_and_tax);
+		System.out.println("Annual Payment with Tax: " + annual_payment_with_tax);
+		System.out.println("Result: \t" + actual_result);		
+		
+		
+
+		
+		}
+///////////////////////		The End		///////////////////////
+		driver.quit();
+	}
+}
